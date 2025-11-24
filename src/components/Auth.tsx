@@ -60,14 +60,11 @@ export function Auth() {
             <div className="flex-1 flex items-center justify-center p-4">
                 <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
                     {/* Logo e Nome App */}
-                    <div className="flex flex-col items-center mb-6">
-                        <img src="/favicon.png" alt="Logo" className="w-16 h-16 mb-3" />
-                        <h2 className="text-2xl font-bold text-slate-800">Calcolatore Cauzioni</h2>
+                    <div className="flex flex-col items-center mb-8">
+                        <img src="/favicon.png" alt="Logo" className="w-20 h-20 mb-4" />
+                        <h1 className="text-3xl font-bold text-slate-800">Calcolatore Cauzioni</h1>
                     </div>
 
-                    <h1 className="text-3xl font-bold text-slate-800 mb-2 text-center">
-                        {isSignUp ? 'Crea un Account' : 'Accedi'}
-                    </h1>
                     <p className="text-slate-500 text-center mb-8">
                         {isSignUp ? 'Registrati per iniziare' : 'Accedi per accedere alla tua dashboard'}
                     </p>
