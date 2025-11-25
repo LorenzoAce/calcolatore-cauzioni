@@ -105,7 +105,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     };
 
     const calculateResult = (neg: number, cauz: number, vers: number) => {
-        return neg - cauz - vers;
+        return neg + cauz + vers;
     };
 
     const showToast = (message: string, type: ToastType) => {
