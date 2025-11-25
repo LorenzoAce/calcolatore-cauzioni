@@ -315,7 +315,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                         <button onClick={() => setSidebarOpen(true)} className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] p-2 rounded-md hover:opacity-90">
                             <Menu className="w-5 h-5" />
                         </button>
-                        <img src="images/logo.png" alt="Logo" className="w-8 h-8" />
+                        <img src="/logo.png" alt="Logo" className="w-8 h-8" />
                         
                     </div>
                     <div className="flex items-center gap-2">
