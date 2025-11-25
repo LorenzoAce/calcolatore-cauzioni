@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, Mail, Loader2 } from 'lucide-react';
+import { Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export function Auth() {
     const [loading, setLoading] = useState(false);
@@ -8,6 +8,7 @@ export function Auth() {
     const [password, setPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [message, setMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,9 +30,8 @@ export function Auth() {
                 });
                 if (error) throw error;
             }
-        } catch (error: any) {
-            // Traduci i messaggi di errore comuni
-            let errorMessage = error.message;
+        } catch (error: unknown) {
+            let errorMessage = error instanceof Error ? error.message : String(error);
             if (errorMessage.includes('Invalid login credentials')) {
                 errorMessage = 'Credenziali di accesso non valide';
             } else if (errorMessage.includes('Email not confirmed')) {
@@ -48,30 +48,30 @@ export function Auth() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:bg-transparent dark:bg-[none] dark:from-transparent dark:to-transparent flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200">
+            <header className="bg-white border-b border-slate-200 dark:bg-[#2A3543] dark:border-[#2A3543]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-center">
-                    <p className="text-sm text-slate-600 italic">per entrare dai 1 euro a Lorenzo</p>
+                    <p className="text-sm text-slate-600 italic dark:text-slate-100">per entrare dai 1 euro a Lorenzo</p>
                 </div>
             </header>
 
             {/* Form Container */}
             <div className="flex-1 flex items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
+                <div className="bg-[#1F293B] text-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-[#1F293B]">
                     {/* Logo e Nome App */}
                     <div className="flex flex-col items-center mb-8">
                         <img src="/favicon.png" alt="Logo" className="w-20 h-20 mb-4" />
-                        <h1 className="text-3xl font-bold text-slate-800">Calcolatore Cauzioni</h1>
+                        <h1 className="text-3xl font-bold text-white">PVR - Esiti Settimanali</h1>
                     </div>
 
-                    <p className="text-slate-500 text-center mb-8">
+                    <p className="text-slate-300 text-center mb-8">
                         {isSignUp ? 'Registrati per iniziare' : 'Accedi per accedere alla tua dashboard'}
                     </p>
 
                     <form onSubmit={handleAuth} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                            <label className="block text-sm font-medium text-white mb-1">Email</label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
@@ -79,24 +79,32 @@ export function Auth() {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none transition-all bg-[#4B5563] text-white placeholder:text-white"
                                     placeholder="you@example.com"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <label className="block text-sm font-medium text-white mb-1">Password</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none transition-all bg-[#4B5563] text-white placeholder:text-white"
                                     placeholder="••••••••"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
+                                    aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
@@ -109,7 +117,7 @@ export function Auth() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`w-full text-white font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isSignUp ? 'bg-[#079765] hover:bg-[#067a51]' : 'bg-[#1E43B8] hover:bg-[#1a3a9e]'}`}
                         >
                             {loading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -119,11 +127,11 @@ export function Auth() {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-slate-500">
+                    <div className="mt-6 text-center text-sm text-slate-300">
                         {isSignUp ? 'Hai già un account?' : "Non hai un account?"}{' '}
                         <button
                             onClick={() => setIsSignUp(!isSignUp)}
-                            className="text-blue-600 hover:underline font-medium"
+                            className="text-white hover:underline font-medium"
                         >
                             {isSignUp ? 'Accedi' : 'Registrati'}
                         </button>
@@ -134,7 +142,7 @@ export function Auth() {
             {/* Footer */}
             <footer className="bg-slate-800 border-t border-slate-700 py-4">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white text-sm">
-                    <p>© 2025 Calcolatore Cauzioni by Lorenzo Acerbo. Tutti i diritti riservati.</p>
+                    <p>© 2025 PVR - Esiti Settimanali by Lorenzo Acerbo. Tutti i diritti riservati.</p>
                     <p className="text-slate-400 mt-1">Beta version 1.00</p>
                 </div>
             </footer>

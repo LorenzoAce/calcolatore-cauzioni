@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogOut, Plus, Trash2, Save, X } from 'lucide-react';
+import { LogOut, Plus, Trash2, Save, X, Menu, Home, Settings, User, Download, Upload, Sun, Moon } from 'lucide-react';
 import { Toast, type ToastType } from './Toast';
 
 interface Calculation {
@@ -63,11 +63,15 @@ function EditableCell({ value: initialValue, type, onSave, className, validate, 
     );
 }
 
-export function Dashboard() {
+export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTheme: () => void }) {
     const [data, setData] = useState<Calculation[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [activeMenu, setActiveMenu] = useState<'home' | 'impostazioni' | 'profilo'>('home');
+    const [showActions, setShowActions] = useState(false);
+    const [importing, setImporting] = useState(false);
 
     // New row state
     const [newName, setNewName] = useState('');
@@ -106,6 +110,104 @@ export function Dashboard() {
 
     const showToast = (message: string, type: ToastType) => {
         setToast({ message, type });
+    };
+
+    const handleExportCsv = () => {
+        const headers = ['name', 'negativo', 'cauzione', 'versamenti_settimanali', 'disponibilita'];
+        const rows = data.map(r => [
+            r.name,
+            r.negativo,
+            r.cauzione,
+            r.versamenti_settimanali,
+            r.disponibilita,
+        ]);
+        const csv = [headers.join(','), ...rows.map(row => row.map(v => {
+            const s = String(v ?? '');
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        }).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'calculations.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const parseCsvLine = (line: string) => {
+        const result: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c === ',' && !inQuotes) {
+                result.push(cur);
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        result.push(cur);
+        return result;
+    };
+
+    const handleImportCsv = async (file: File) => {
+        try {
+            setImporting(true);
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length < 2) {
+                showToast('File CSV vuoto o non valido', 'error');
+                return;
+            }
+            const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+            const expected = ['name', 'negativo', 'cauzione', 'versamenti_settimanali', 'disponibilita'];
+            const ok = expected.every(h => headers.includes(h));
+            if (!ok) {
+                showToast('Header CSV non valido', 'error');
+                return;
+            }
+            const user = (await supabase.auth.getUser()).data.user;
+            if (!user) {
+                showToast('Utente non autenticato', 'error');
+                return;
+            }
+            const idx: Record<string, number> = {};
+            headers.forEach((h, i) => { idx[h] = i; });
+            const rows = lines.slice(1).map(line => parseCsvLine(line)).map(cols => ({
+                user_id: user.id,
+                name: cols[idx['name']] ?? '',
+                negativo: parseFloat((cols[idx['negativo']] ?? '0').replace(',', '.')) || 0,
+                cauzione: parseFloat((cols[idx['cauzione']] ?? '0').replace(',', '.')) || 0,
+                versamenti_settimanali: parseFloat((cols[idx['versamenti_settimanali']] ?? '0').replace(',', '.')) || 0,
+                disponibilita: parseFloat((cols[idx['disponibilita']] ?? '0').replace(',', '.')) || 0,
+            })).filter(r => r.name.trim().length > 0);
+            if (rows.length === 0) {
+                showToast('Nessuna riga valida da importare', 'error');
+                return;
+            }
+            const { data: inserted, error } = await supabase
+                .from('calculations')
+                .insert(rows)
+                .select();
+            if (error) throw error;
+            setData([...(inserted || []), ...data]);
+            showToast('Import CSV completato', 'success');
+        } catch {
+            showToast('Errore durante l\'import CSV', 'error');
+        } finally {
+            setImporting(false);
+        }
     };
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -163,21 +265,21 @@ export function Dashboard() {
         }
     };
 
-    const handleUpdate = async (id: string, field: keyof Calculation, value: any) => {
-        // Optimistic update for the main list
-        let parsedValue = field === 'name' ? value : (parseFloat(value) || 0);
-        if (field === 'negativo') {
-            parsedValue = -(Math.abs(parsedValue));
-        }
+    const handleUpdate = async (id: string, field: keyof Calculation, value: string | number) => {
+        const isName = field === 'name';
+        const numValue = typeof value === 'number' ? value : (parseFloat(String(value)) || 0);
+        const nextValue: string | number = isName
+            ? String(value)
+            : (field === 'negativo' ? -(Math.abs(numValue)) : numValue);
 
         setData(data.map(item =>
-            item.id === id ? { ...item, [field]: parsedValue } : item
+            item.id === id ? { ...item, [field]: nextValue } : item
         ));
 
         try {
             const { error } = await supabase
                 .from('calculations')
-                .update({ [field]: parsedValue })
+                .update({ [field]: nextValue })
                 .eq('id', id);
 
             if (error) throw error;
@@ -197,7 +299,7 @@ export function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-transparent">
             {toast && (
                 <Toast
                     message={toast.message}
@@ -207,102 +309,138 @@ export function Dashboard() {
             )}
 
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <header className="bg-white dark:bg-[#2A3543] border-b border-slate-200 dark:border-[#2A3543] sticky top-0 z-10">
+                <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src="/favicon.png" alt="Logo" className="w-8 h-8" />
-                        <h1 className="text-xl font-bold text-slate-800">Calcolatore Cauzioni</h1>
+                        <button onClick={() => setSidebarOpen(true)} className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] p-2 rounded-md hover:opacity-90">
+                            <Menu className="w-5 h-5" />
+                        </button>
+                        
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="text-slate-500 hover:text-slate-700 flex items-center gap-2 text-sm font-medium transition-colors"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        Esci
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onToggleTheme}
+                            className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] flex items-center gap-2 text-sm font-medium transition-colors px-2 py-1 rounded-md hover:opacity-90"
+                            title="Tema"
+                        >
+                            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                            {theme === 'dark' ? 'Light' : 'Dark'}
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] flex items-center gap-2 text-sm font-medium transition-colors px-2 py-1 rounded-md hover:opacity-90"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Esci
+                        </button>
+                    </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Actions */}
                 <div className="mb-6 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-slate-700">Riepilogo</h2>
-                    <button
-                        onClick={() => setIsAdding(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm hover:shadow-md"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Nuova Voce
-                    </button>
+                    <h2 className="text-lg font-semibold text-slate-700 dark:text-white">Riepilogo</h2>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsAdding(true)}
+                            className="bg-[#1E43B8] hover:bg-[#1a3a9e] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Nuova Voce
+                        </button>
+                        <button
+                            onClick={handleExportCsv}
+                            className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm hover:opacity-90"
+                        >
+                            <Download className="w-4 h-4" />
+                            Esporta CSV
+                        </button>
+                        <label className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm hover:opacity-90 cursor-pointer">
+                            <Upload className="w-4 h-4" />
+                            Importa CSV
+                            <input
+                                type="file"
+                                accept=".csv"
+                                className="sr-only"
+                                onChange={(ev) => {
+                                    const f = ev.target.files?.[0];
+                                    if (f) handleImportCsv(f);
+                                    ev.currentTarget.value = '';
+                                }}
+                                disabled={importing}
+                            />
+                        </label>
+                    </div>
                 </div>
 
                 {/* Add Form Modal/Overlay */}
                 {isAdding && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h3 className="font-semibold text-slate-800">Aggiungi Nuova Voce</h3>
-                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                            <div className="px-6 py-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-white">Aggiungi Nuova Voce</h3>
+                                <button onClick={() => setIsAdding(false)} className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md hover:opacity-90">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
                             <form onSubmit={handleAdd} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Utente</label>
+                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Utente</label>
                                     <input
                                         type="text"
                                         required
                                         value={newName}
                                         onChange={e => setNewName(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
                                         placeholder="Nome utente"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Negativo</label>
+                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Negativo</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         required
                                         value={newNegativo}
                                         onChange={e => setNewNegativo(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Cauzione</label>
+                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Cauzione</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         required
                                         value={newCauzione}
                                         onChange={e => setNewCauzione(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Vers. Settimanali</label>
+                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Vers. Settimanali</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         required
                                         value={newVersamenti}
                                         onChange={e => setNewVersamenti(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Disponibilità</label>
+                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Disponibilità</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         required
                                         value={newDisponibilita}
                                         onChange={e => setNewDisponibilita(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -311,13 +449,13 @@ export function Dashboard() {
                                     <button
                                         type="button"
                                         onClick={() => setIsAdding(false)}
-                                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                                        className="px-4 py-2 bg-[#555D69] text-white border-[0.5px] border-[#888F96] rounded-lg font-medium transition-colors hover:opacity-90"
                                     >
                                         Annulla
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                                        className="px-4 py-2 bg-[#1E43B8] hover:bg-[#1a3a9e] text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                                     >
                                         <Save className="w-4 h-4" />
                                         Salva
@@ -328,95 +466,142 @@ export function Dashboard() {
                     </div>
                 )}
 
+                {/* Sidebar */}
+                {sidebarOpen && (
+                    <div className="fixed inset-0 z-50 flex">
+                        <div className="fixed inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+                        <div className="relative z-10 w-64 h-full bg-slate-900 text-white shadow-2xl">
+                            <div className="flex items-center justify-between px-4 h-16 border-b border-slate-800">
+                                <span className="font-semibold">Menu</span>
+                                <button onClick={() => setSidebarOpen(false)} className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md hover:opacity-90">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <nav className="py-2">
+                                <button onClick={() => setActiveMenu('home')} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800 ${activeMenu === 'home' ? 'bg-slate-800' : ''}`}>
+                                    <Home className="w-4 h-4" />
+                                    Home
+                                </button>
+                                <button onClick={() => setActiveMenu('impostazioni')} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800 ${activeMenu === 'impostazioni' ? 'bg-slate-800' : ''}`}>
+                                    <Settings className="w-4 h-4" />
+                                    Impostazioni
+                                </button>
+                                <button onClick={() => setActiveMenu('profilo')} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800 ${activeMenu === 'profilo' ? 'bg-slate-800' : ''}`}>
+                                    <User className="w-4 h-4" />
+                                    Profilo
+                                </button>
+                            </nav>
+                            {activeMenu === 'impostazioni' && (
+                                <div className="px-4 py-4 border-t border-slate-800">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm">Colonna Azioni</span>
+                                        <label className="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={showActions} onChange={(e) => setShowActions(e.target.checked)} />
+                                            <div className="w-10 h-5 bg-slate-700 peer-checked:bg-green-500 rounded-full transition-all relative">
+                                                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-all peer-checked:left-5" />
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">Di default è disabilitata.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-[#1F293B] text-white rounded-xl shadow-sm border border-[#1F293B] overflow-hidden backdrop-blur-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-emerald-800 border-b border-emerald-900">
+                                <tr className="bg-green-800 dark:bg-emerald-900 border-b border-green-900 dark:border-emerald-950">
                                     <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider">Utente</th>
                                     <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Negativo</th>
                                     <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Cauzione</th>
                                     <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Vers. Sett.</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-red-500 uppercase tracking-wider text-right">Risultato</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Disponibilità</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center">Azioni</th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Disponibilità Conti Gioco</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Risultato</th>
+                                    {showActions && (
+                                        <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center">Azioni</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                                        <td colSpan={showActions ? 7 : 6} className="px-6 py-8 text-center text-slate-400">
                                             Caricamento...
                                         </td>
                                     </tr>
                                 ) : data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                                        <td colSpan={showActions ? 7 : 6} className="px-6 py-8 text-center text-slate-400">
                                             Nessun dato presente. Aggiungi una nuova voce.
                                         </td>
                                     </tr>
                                 ) : (
                                     data.map((row) => (
-                                        <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
-                                            <td className="px-4 py-2">
+                                        <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+                                            <td className="px-4 py-2 text-white uppercase">
                                                 <EditableCell
                                                     type="text"
                                                     value={row.name}
                                                     onSave={(val) => handleUpdate(row.id, 'name', val)}
                                                     validate={(val) => (!val || val.toString().trim() === '') ? 'Il nome non può essere vuoto' : null}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm font-medium text-slate-900 outline-none transition-all"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm font-medium text-white uppercase outline-none transition-all"
                                                 />
                                             </td>
-                                            <td className="px-4 py-2">
+                                            <td className="px-4 py-2 text-red-400">
                                                 <EditableCell
                                                     type="number"
                                                     value={row.negativo}
                                                     onSave={(val) => handleUpdate(row.id, 'negativo', val)}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm text-slate-600 text-right font-mono outline-none transition-all"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-red-400 text-right font-mono outline-none transition-all"
                                                 />
                                             </td>
-                                            <td className="px-4 py-2">
+                                            <td className="px-4 py-2 text-white">
                                                 <EditableCell
                                                     type="number"
                                                     value={row.cauzione}
                                                     onSave={(val) => handleUpdate(row.id, 'cauzione', val)}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm text-slate-600 text-right font-mono outline-none transition-all"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-white text-right font-mono outline-none transition-all"
                                                 />
                                             </td>
-                                            <td className="px-4 py-2">
+                                            <td className="px-4 py-2 text-white">
                                                 <EditableCell
                                                     type="number"
                                                     value={row.versamenti_settimanali}
                                                     onSave={(val) => handleUpdate(row.id, 'versamenti_settimanali', val)}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm text-slate-600 text-right font-mono outline-none transition-all"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-white text-right font-mono outline-none transition-all"
                                                 />
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-bold text-blue-700 text-right bg-blue-50/30 font-mono">
-                                                {calculateResult(row.negativo, row.cauzione, row.versamenti_settimanali).toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-2">
+                                            <td className="px-4 py-2 text-white">
                                                 <EditableCell
                                                     type="number"
                                                     value={row.disponibilita}
                                                     onSave={(val) => handleUpdate(row.id, 'disponibilita', val)}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm text-slate-600 text-right font-mono outline-none transition-all"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-white text-right font-mono outline-none transition-all"
                                                 />
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleDelete(row.id)}
-                                                    className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50"
-                                                    title="Elimina"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                            <td className="px-6 py-4 text-sm font-bold text-[#3B82F6] text-right bg-slate-50/30 dark:bg-slate-800/30 font-mono">
+                                                {calculateResult(row.negativo, row.cauzione, row.versamenti_settimanali).toFixed(2)}
                                             </td>
+                                            {showActions && (
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => handleDelete(row.id)}
+                                                        className="bg-[#555D69] text-white border-[0.5px] border-[#888F96] transition-colors p-1 rounded-md hover:opacity-90"
+                                                        title="Elimina"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))
                                 )}

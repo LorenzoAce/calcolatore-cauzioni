@@ -1,4 +1,3 @@
--- Create the table
 create table public.calculations (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -10,22 +9,25 @@ create table public.calculations (
   disponibilita numeric default 0
 );
 
--- Enable Row Level Security (RLS)
 alter table public.calculations enable row level security;
 
--- Create policies
-create policy "Users can view their own calculations"
+drop policy if exists "Users can view their own calculations" on public.calculations;
+drop policy if exists "Users can insert their own calculations" on public.calculations;
+drop policy if exists "Users can update their own calculations" on public.calculations;
+drop policy if exists "Users can delete their own calculations" on public.calculations;
+
+create policy "Authenticated can select calculations"
   on public.calculations for select
-  using (auth.uid() = user_id);
+  using (auth.role() = 'authenticated');
 
-create policy "Users can insert their own calculations"
+create policy "Authenticated can insert calculations"
   on public.calculations for insert
-  with check (auth.uid() = user_id);
+  with check (auth.role() = 'authenticated');
 
-create policy "Users can update their own calculations"
+create policy "Authenticated can update calculations"
   on public.calculations for update
-  using (auth.uid() = user_id);
+  using (auth.role() = 'authenticated');
 
-create policy "Users can delete their own calculations"
+create policy "Authenticated can delete calculations"
   on public.calculations for delete
-  using (auth.uid() = user_id);
+  using (auth.role() = 'authenticated');

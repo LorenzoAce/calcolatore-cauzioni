@@ -9,3 +9,12 @@
 body {
   @apply bg-slate-50 text-slate-900;
 }
+
+.dark body {
+  @apply text-slate-100;
+  background-image: 
+    linear-gradient(to top, #1D3EA7 0%, #131D36 100%),
+    linear-gradient(to right, #1D3EA7 0%, #131D36 100%);
+  background-blend-mode: multiply;
+  background-attachment: fixed;
+}
