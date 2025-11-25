@@ -61,7 +61,7 @@ export function Auth() {
                 <div className="bg-[#1F293B] text-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-[#1F293B]">
                     {/* Logo e Nome App */}
                     <div className="flex flex-col items-center mb-8">
-                        <img src="/favicon.png" alt="Logo" className="w-20 h-20 mb-4" />
+                        <img src="images/logo.png" alt="Logo" className="w-20 h-20 mb-4" />
                         <h1 className="text-3xl font-bold text-white">PVR - Esiti Settimanali</h1>
                     </div>
 
