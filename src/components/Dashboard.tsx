@@ -691,7 +691,10 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                         
 
-                        const indent = (s: string, times: number) => ' '.repeat(Math.max(0, times) * 2) + s;
+                        const tableRows: Array<[string, string, number, number, number, number, number]> = [];
+                        const rowDepths: number[] = [];
+                        const rowHasChildren: boolean[] = [];
+                        
 
                         const write = (id: string, depth: number) => {
                             const lvl = String((levels[id] ?? 'user')).toUpperCase();
@@ -699,11 +702,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                             const kids = childrenOf[id] || [];
                             if (kids.length > 0) {
                                 const tot = sumTree(id);
-                                const row = ws.addRow({ livello: lvl, utente: indent(name, depth), negativo: tot.negativo, cauzione: tot.cauzione, vers: tot.vers, disp: tot.disp, ris: tot.ris });
-                                row.font = { bold: true };
+                                tableRows.push([lvl, name, tot.negativo, tot.cauzione, tot.vers, tot.disp, tot.ris]);
+                                rowDepths.push(depth);
+                                rowHasChildren.push(true);
                             } else {
                                 const base = valueOf(id);
-                                ws.addRow({ livello: lvl, utente: indent(name, depth), negativo: base.n, cauzione: base.c, vers: base.v, disp: base.d, ris: base.rr });
+                                tableRows.push([lvl, name, base.n, base.c, base.v, base.d, base.rr]);
+                                rowDepths.push(depth);
+                                rowHasChildren.push(false);
                             }
                             kids.forEach(k => write(k, depth + 1));
                         };
@@ -713,13 +719,32 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                             return !pid || !byId[pid];
                         });
                         roots.forEach(r => write(r.id, 0));
+                        ws.addTable({
+                            name: 'EsitiSettimanali',
+                            ref: 'A1',
+                            headerRow: true,
+                            style: { theme: 'TableStyleMedium2', showRowStripes: true },
+                            columns: [
+                                { name: 'Livello', filterButton: true },
+                                { name: 'Utente', filterButton: true },
+                                { name: 'Negativo', filterButton: true },
+                                { name: 'Cauzione', filterButton: true },
+                                { name: 'Versamenti Settimanali', filterButton: true },
+                                { name: 'Disponibilità Conti Gioco', filterButton: true },
+                                { name: 'Risultato', filterButton: true },
+                            ],
+                            rows: tableRows,
+                        });
 
                         const header = ws.getRow(1);
                         header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                         header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E43B8' } };
                         header.alignment = { vertical: 'middle', horizontal: 'center' };
-                        ws.eachRow(row => {
-                            row.eachCell(cell => {
+
+                        const maxDepth = Math.max(0, ...rowDepths);
+                        ws.properties.outlineLevelRow = maxDepth;
+                        ws.eachRow((row, rowNumber) => {
+                            row.eachCell((cell) => {
                                 cell.border = {
                                     top: { style: 'thin', color: { argb: 'FF888F96' } },
                                     left: { style: 'thin', color: { argb: 'FF888F96' } },
@@ -731,6 +756,16 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                     cell.alignment = { horizontal: 'right' };
                                 }
                             });
+                            if (rowNumber > 1) {
+                                const idx = rowNumber - 2;
+                                const d = rowDepths[idx] || 0;
+                                row.outlineLevel = Math.min(d, 7);
+                                const nameCell = row.getCell(2);
+                                nameCell.alignment = { indent: Math.min(d, 7) };
+                                if (rowHasChildren[idx]) {
+                                    row.font = { bold: true };
+                                }
+                            }
                         });
                         const buf = await wb.xlsx.writeBuffer();
                         const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
