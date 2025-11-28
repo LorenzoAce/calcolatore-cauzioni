@@ -1242,7 +1242,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                     />
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-bold text-[#3B82F6] text-right bg-slate-50/30 dark:bg-slate-800/30 font-mono">
+                                            <td className="px-6 py-4 text-sm font-bold text-white text-right bg-red-600 font-mono">
                                                 {(hasChildren ? totals!.ris : valueOf(row.id).rr).toFixed(2)}
                                             </td>
                                             {showActions && (
