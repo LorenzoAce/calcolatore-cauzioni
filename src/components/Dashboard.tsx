@@ -122,9 +122,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
         }
         return {};
     });
-    const [versModal, setVersModal] = useState<null | { mode: 'add' | 'edit'; id?: string; value: number }>(null);
-    const [pendingAddRow, setPendingAddRow] = useState<null | (Omit<Calculation, 'id'> & { level?: Level; parent_id?: string | null })>(null);
-    const [pendingEdit, setPendingEdit] = useState<null | { id: string; value: number }>(null);
+    
 
     // New row state
     const [newName, setNewName] = useState('');
@@ -134,6 +132,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     const [newDisponibilita, setNewDisponibilita] = useState('');
     const [newLevel, setNewLevel] = useState<Level>('user');
     const [newParentId, setNewParentId] = useState<string>('');
+    const [newVersInclude, setNewVersInclude] = useState<boolean>(true);
 
     const fetchData = useCallback(async () => {
         try {
@@ -351,41 +350,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
         URL.revokeObjectURL(url);
     };
 
-    const confirmVersModal = async (include: boolean) => {
-        try {
-            if (versModal?.mode === 'edit' && pendingEdit) {
-                const { id, value } = pendingEdit;
-                setVersInclude(prev => ({ ...prev, [id]: include }));
-                setData(data.map(item => item.id === id ? { ...item, versamenti_settimanali: value } : item));
-                const { error } = await supabase
-                    .from('calculations')
-                    .update({ versamenti_settimanali: value })
-                    .eq('id', id);
-                if (error) throw error;
-            } else if (versModal?.mode === 'add' && pendingAddRow) {
-                const { data: inserted, error } = await supabase
-                    .from('calculations')
-                    .insert([pendingAddRow])
-                    .select()
-                    .single();
-                if (error) throw error;
-                setData([inserted, ...data]);
-                setLevels(prev => ({ ...prev, [inserted.id]: (dbHierarchy ? (inserted.level as Level) ?? newLevel : newLevel) }));
-                setParents(prev => ({ ...prev, [inserted.id]: (dbHierarchy ? (inserted.parent_id as string | null) ?? (newParentId || null) : (newParentId || null)) }));
-                setVersInclude(prev => ({ ...prev, [inserted.id]: include }));
-                setIsAdding(false);
-                resetForm();
-                showToast('Voce aggiunta con successo', 'success');
-            }
-        } catch (error) {
-            console.error('Error persisting versamenti choice:', error);
-            showToast('Errore durante il salvataggio', 'error');
-        } finally {
-            setVersModal(null);
-            setPendingAddRow(null);
-            setPendingEdit(null);
-        }
-    };
+    
 
     const parseCsvLine = (line: string) => {
         const result: string[] = [];
@@ -499,8 +464,21 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                 newRow.parent_id = newParentId || null;
             }
 
-            setPendingAddRow(newRow);
-            setVersModal({ mode: 'add', value: newRow.versamenti_settimanali });
+            const { data: inserted, error } = await supabase
+                .from('calculations')
+                .insert([newRow])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setData([inserted, ...data]);
+            setLevels(prev => ({ ...prev, [inserted.id]: (dbHierarchy ? (inserted.level as Level) ?? newLevel : newLevel) }));
+            setParents(prev => ({ ...prev, [inserted.id]: (dbHierarchy ? (inserted.parent_id as string | null) ?? (newParentId || null) : (newParentId || null)) }));
+            setVersInclude(prev => ({ ...prev, [inserted.id]: newVersInclude }));
+            setIsAdding(false);
+            resetForm();
+            showToast('Voce aggiunta con successo', 'success');
         } catch (error) {
             console.error('Error adding row:', error);
             showToast('Errore durante il salvataggio', 'error');
@@ -530,12 +508,6 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
         const nextValue: string | number = isName
             ? String(value)
             : (field === 'negativo' ? -(Math.abs(numValue)) : numValue);
-        if (field === 'versamenti_settimanali') {
-            setPendingEdit({ id, value: Number(nextValue) });
-            setVersModal({ mode: 'edit', id, value: Number(nextValue) });
-            return;
-        }
-
         setData(data.map(item => item.id === id ? { ...item, [field]: nextValue } : item));
 
         try {
@@ -559,6 +531,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
         setNewDisponibilita('');
         setNewLevel('user');
         setNewParentId('');
+        setNewVersInclude(true);
     };
 
     const levelBadgeClass = (lvl: Level) => {
@@ -659,7 +632,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
             </div>
             <div className="flex items-center gap-2">
                 <button
-                    onClick={() => setIsAdding(true)}
+                    onClick={() => { setIsAdding(true); showToast('Modulo Nuova Voce aperto', 'success'); }}
                     className="bg-[#1E43B8] hover:bg-[#1a3a9e] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
@@ -878,18 +851,28 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                         placeholder="0.00"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-white uppercase mb-1">Vers. Settimanali</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        required
-                                        value={newVersamenti}
-                                        onChange={e => setNewVersamenti(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
-                                        placeholder="0.00"
-                                    />
-                                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-white uppercase mb-1">Vers. Settimanali</label>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={newVersamenti}
+                            onChange={e => setNewVersamenti(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none bg-[#4B5563] text-white placeholder:text-white"
+                            placeholder="0.00"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setNewVersInclude(!newVersInclude)}
+                            className={`${newVersInclude ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'} text-white px-3 py-2 rounded-md text-xs font-medium transition-colors`}
+                            title={newVersInclude ? 'Incluso nel calcolo' : 'Escluso dal calcolo'}
+                        >
+                            {newVersInclude ? 'Inclusa' : 'Esclusa'}
+                        </button>
+                    </div>
+                </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-white uppercase mb-1">Disponibilità</label>
                                     <input
@@ -989,29 +972,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                     </div>
                 )}
 
-                {/* Versamenti Settimanali Modal */}
-                {versModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
-                            <div className="px-6 py-4 flex justify-between items-center">
-                                <h3 className="font-semibold text-white">Versamenti Settimanali</h3>
-                                <button onClick={() => { setVersModal(null); setPendingAddRow(null); setPendingEdit(null); }} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                <p className={`${theme === 'light' ? 'text-black' : 'text-white'}`}>Includere i versamenti settimanali nel calcolo del risultato?</p>
-                                <div className="flex justify-end gap-3">
-                                    <button onClick={() => confirmVersModal(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg font-medium transition-colors`}>Non includere</button>
-                                    <button onClick={() => confirmVersModal(true)} className={`${theme === 'light' ? 'bg-[#079765] hover:bg-[#067a51]' : 'bg-[#079765] hover:bg-[#067a51]'} text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2`}>
-                                        <Save className="w-4 h-4" />
-                                        Includi
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                
 
                 {/* Sidebar */}
                 {sidebarOpen && (
@@ -1107,8 +1068,9 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                         const totals = hasChildren ? sumTree(row.id) : null;
                                         const rowLevel = (levels[row.id] ?? 'user') as Level;
                                         const owner = rowLevel === 'pvr' ? ancestorOfLevels(row.id, ['agente','master']) : null;
+                                        const included = versInclude[row.id] !== false;
                                         return (
-                                        <tr key={row.id} className={`${levelRowBgClass(rowLevel)} hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group`}>
+                                            <tr key={row.id} className={`${levelRowBgClass(rowLevel)} hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group`}>
                                             <td className="px-4 py-2">
                                                 <span className={`inline-block px-2 py-1 text-xs rounded ${levelBadgeClass(levels[row.id] ?? 'user')}`}>{(levels[row.id] ?? 'user').toUpperCase()}</span>
                                             </td>
@@ -1165,13 +1127,22 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                 {hasChildren ? (
                                                     <span className="font-mono block text-right">{totals!.vers.toFixed(2)}</span>
                                                 ) : (
-                                                    <EditableCell
-                                                        type="number"
-                                                        value={row.versamenti_settimanali}
-                                                        onSave={(val) => handleUpdate(row.id, 'versamenti_settimanali', val)}
-                                                        onError={(msg) => showToast(msg, 'error')}
-                                                        className={`w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
-                                                    />
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <EditableCell
+                                                            type="number"
+                                                            value={row.versamenti_settimanali}
+                                                            onSave={(val) => handleUpdate(row.id, 'versamenti_settimanali', val)}
+                                                            onError={(msg) => showToast(msg, 'error')}
+                                                            className={`bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
+                                                        />
+                                                        <button
+                                                            onClick={() => setVersInclude(prev => ({ ...prev, [row.id]: !included }))}
+                                                            className={`${included ? 'bg-emerald-600 hover:bg-emerald-500' : (theme === 'light' ? 'bg-slate-300 hover:bg-slate-400 text-black' : 'bg-slate-700 hover:bg-slate-600 text-white)')} text-white px-2 py-1 rounded-md text-xs font-medium transition-colors`}
+                                                            title={included ? 'Incluso nel calcolo' : 'Escluso dal calcolo'}
+                                                        >
+                                                            {included ? 'Inclusa' : 'Esclusa'}
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'}`}>
@@ -1188,7 +1159,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-sm font-bold text-[#3B82F6] text-right bg-slate-50/30 dark:bg-slate-800/30 font-mono">
-                                                {(hasChildren ? totals!.ris : calculateResult(row.negativo, row.cauzione, row.versamenti_settimanali)).toFixed(2)}
+                                                {(hasChildren ? totals!.ris : valueOf(row.id).rr).toFixed(2)}
                                             </td>
                                             {showActions && (
                                             <td className="px-6 py-4 text-center">
