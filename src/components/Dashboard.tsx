@@ -172,14 +172,6 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     }, [parents]);
 
     useEffect(() => {
-        if (Object.keys(expanded).length === 0 && data.length > 0) {
-            const next: Record<string, boolean> = {};
-            data.forEach(r => { next[r.id] = true; });
-            setExpanded(next);
-        }
-    }, [data, expanded]);
-
-    useEffect(() => {
         const channel = supabase.channel('calculations_rt')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calculations' }, (payload) => {
                 const row = payload.new as Calculation;
@@ -1050,9 +1042,9 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                             <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} uppercase`} title={owner ? `Appartiene a: ${(byId[owner.id]?.name ?? '').toUpperCase()} (${owner.level.toUpperCase()})` : undefined}>
                                                 <div className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
                                                     {((childrenOf[row.id] || []).length > 0) ? (
-                                                        <button
+                                                    <button
                                                             onClick={() => setExpanded(prev => ({ ...prev, [row.id]: !prev[row.id] }))}
-                                                            className="p-1 rounded hover:bg-slate-700"
+                                                            className={`${theme === 'light' ? 'bg-slate-100 text-blue-600 ring-1 ring-blue-300 hover:bg-slate-200' : 'bg-[#555D69] text-white ring-1 ring-[#888F96] hover:opacity-90'} p-1 rounded transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500`}
                                                             aria-label={expanded[row.id] ? 'Comprimi' : 'Espandi'}
                                                         >
                                                             {expanded[row.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
