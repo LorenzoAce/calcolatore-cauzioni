@@ -9,6 +9,7 @@ export function Auth({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTogg
     const [isSignUp, setIsSignUp] = useState(false);
     const [message, setMessage] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -17,11 +18,30 @@ export function Auth({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTogg
 
         try {
             if (isSignUp) {
+                const codeToCheck = inviteCode.trim();
+                if (!codeToCheck) {
+                    throw new Error('Inserisci un codice invito');
+                }
+                const { data: codes, error: codeError } = await supabase
+                    .from('invite_codes')
+                    .select('id')
+                    .eq('code', codeToCheck)
+                    .limit(1);
+                if (codeError || !codes || codes.length === 0) {
+                    throw new Error('Codice invito non valido');
+                }
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
                 });
                 if (error) throw error;
+                const codeId = codes[0].id as string;
+                try {
+                    await supabase
+                        .from('invite_codes')
+                        .update({ used_at: new Date().toISOString(), used_by: email })
+                        .eq('id', codeId);
+                } catch { void 0; }
                 setMessage('Controlla la tua email per il link di conferma!');
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
@@ -74,7 +94,7 @@ export function Auth({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTogg
                     </div>
 
                     <p className={`${theme === 'light' ? 'text-black' : 'text-slate-300'} text-center mb-8`}>
-                        {isSignUp ? 'Registrati per iniziare' : 'Accedi per accedere alla tua dashboard'}
+                        {isSignUp ? 'Registrati per iniziare' : 'Accedi alla tua dashboard'}
                     </p>
 
                     <form onSubmit={handleAuth} className="space-y-4">
@@ -92,6 +112,22 @@ export function Auth({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTogg
                                 />
                             </div>
                         </div>
+
+                        {isSignUp && (
+                            <div>
+                                <label className={`block text-sm font-medium mb-1 ${theme === 'light' ? 'text-black' : 'text-white'}`}>Codice invito</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        required
+                                        value={inviteCode}
+                                        onChange={(e) => setInviteCode(e.target.value)}
+                                        className={`w-full pl-3 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none transition-all ${theme === 'light' ? 'border-slate-300 bg-white text-black placeholder:text-slate-500' : 'border-slate-200 bg-[#4B5563] text-white placeholder:text-white'}`}
+                                        placeholder="XXXX-XXXX"
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <label className={`block text-sm font-medium mb-1 ${theme === 'light' ? 'text-black' : 'text-white'}`}>Password</label>

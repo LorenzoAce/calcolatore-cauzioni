@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogOut, Plus, Trash2, Save, X, Menu, Home, Settings, User, Download, Upload, Sun, Moon, Search as SearchIcon, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
+import { LogOut, Plus, Trash2, Save, X, Menu, Home, Settings, User, Users, Download, Upload, Sun, Moon, Search as SearchIcon, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
 import { Toast, type ToastType } from './Toast';
 
 interface Calculation {
@@ -73,7 +73,24 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     const [isAdding, setIsAdding] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeMenu, setActiveMenu] = useState<'home' | 'impostazioni' | 'profilo'>('home');
+    const [activeMenu, setActiveMenu] = useState<'home' | 'impostazioni' | 'profilo' | 'inviti'>('home');
+    const [inviteModalOpen, setInviteModalOpen] = useState(false);
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
+    const [usersModalOpen, setUsersModalOpen] = useState(false);
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileFirstName, setProfileFirstName] = useState('');
+    const [profileLastName, setProfileLastName] = useState('');
+    const [profileBirthDate, setProfileBirthDate] = useState<string>('');
+    const [profileInviteCode, setProfileInviteCode] = useState<string>('');
+    const [profileRegisteredAt, setProfileRegisteredAt] = useState<string>('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    type AppRole = 'admin' | 'user';
+    const [appUsers, setAppUsers] = useState<Array<{ id: string; email: string; role: AppRole; active?: boolean; created_at?: string }>>([]);
+    const [inviteCodes, setInviteCodes] = useState<Array<{ id: string; code: string; active?: boolean; used_at?: string | null; used_by?: string | null }>>([]);
+    const [newInviteCode, setNewInviteCode] = useState('');
+    const [newInviteActive, setNewInviteActive] = useState(true);
     const [showActions, setShowActions] = useState(false);
     const [importing, setImporting] = useState(false);
     const [csvEnabled, setCsvEnabled] = useState<boolean>(() => {
@@ -183,6 +200,77 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const fetchInviteCodes = useCallback(async () => {
+        try {
+            const { data: codes, error } = await supabase
+                .from('invite_codes')
+                .select('id, code, active, used_at, used_by')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setInviteCodes(codes || []);
+        } catch (err) {
+            console.error('Error fetching invite codes:', err);
+        }
+    }, []);
+
+    const genInviteCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const part = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        return `${part()}-${part()}-${part()}`;
+    };
+
+    const fetchAppUsers = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('app_users')
+                .select('id, email, role, active, created_at')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setAppUsers((data || []).map(u => ({ id: u.id as string, email: String(u.email ?? ''), role: (u.role as AppRole) ?? 'user', active: Boolean(u.active), created_at: String(u.created_at ?? '') })));
+        } catch (err) {
+            console.error('Error fetching app users:', err);
+        }
+    }, []);
+
+    const fetchProfile = useCallback(async () => {
+        try {
+            setProfileLoading(true);
+            const { data: userData } = await supabase.auth.getUser();
+            const user = userData?.user;
+            if (user) {
+                setProfileRegisteredAt(user.created_at ?? '');
+                const email = user.email ?? '';
+                if (email) {
+                    const { data: codes } = await supabase
+                        .from('invite_codes')
+                        .select('*')
+                        .eq('used_by', email)
+                        .order('used_at', { ascending: false })
+                        .limit(1);
+                    if (codes && codes.length > 0) {
+                        setProfileInviteCode(String(codes[0].code ?? ''));
+                    } else {
+                        setProfileInviteCode('');
+                    }
+                }
+                const { data: appUserRows } = await supabase
+                    .from('app_users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .limit(1);
+                const row = (appUserRows && appUserRows[0]) as { first_name?: string | null; last_name?: string | null; birth_date?: string | null } | undefined;
+                setProfileFirstName(String(row?.first_name ?? ''));
+                setProfileLastName(String(row?.last_name ?? ''));
+                const bd = row?.birth_date;
+                setProfileBirthDate(bd ? String(bd).substring(0, 10) : '');
+            }
+        } catch (err) {
+            console.error('Error fetching profile:', err);
+        } finally {
+            setProfileLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -1095,6 +1183,250 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                     </div>
                 )}
 
+                {inviteModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                            <div className="px-6 py-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-white">Gestione Codici Invito</h3>
+                                <button onClick={() => setInviteModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={newInviteCode}
+                                        onChange={(e) => setNewInviteCode(e.target.value)}
+                                        placeholder="Nuovo codice"
+                                        className="flex-1 px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white"
+                                    />
+                                    <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={newInviteActive} onChange={(e) => setNewInviteActive(e.target.checked)} />
+                                        <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
+                                        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
+                                    </label>
+                                    <button
+                                        onClick={async () => { try { const { error } = await supabase.from('invite_codes').insert([{ code: newInviteCode, active: newInviteActive }]).select('*'); if (error) throw error; setNewInviteCode(''); setNewInviteActive(true); await fetchInviteCodes(); showToast('Codice creato', 'success'); } catch (err) { console.error(err); showToast('Errore creando codice', 'error'); } }}
+                                        className="px-3 py-2 rounded-md bg-emerald-600 text-white text-sm"
+                                    >
+                                        Aggiungi
+                                    </button>
+                                    <button
+                                        onClick={() => setNewInviteCode(genInviteCode())}
+                                        className="px-3 py-2 rounded-md bg-[#555D69] text-white text-sm"
+                                    >
+                                        Genera
+                                    </button>
+                                </div>
+                                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                                    {inviteCodes.map(c => (
+                                        <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-mono">{c.code}</span>
+                                                <span className={`text-xs px-2 py-1 rounded ${c.active ? 'bg-green-700 text-white' : 'bg-slate-700 text-white'}`}>{c.active ? 'Attivo' : 'Inattivo'}</span>
+                                                {c.used_at && <span className="text-xs text-slate-400">Usato: {new Date(c.used_at).toLocaleDateString()}</span>}
+                                                {c.used_by && <span className="text-xs text-slate-400">Da: {c.used_by}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={async () => { try { const { error } = await supabase.from('invite_codes').update({ active: !c.active }).eq('id', c.id); if (error) throw error; await fetchInviteCodes(); } catch (err) { console.error(err); showToast('Errore aggiornando', 'error'); } }}
+                                                    className="px-2 py-1 rounded-md bg-[#555D69] text-white text-xs"
+                                                >
+                                                    {c.active ? 'Disattiva' : 'Attiva'}
+                                                </button>
+                                                <button
+                                                    onClick={async () => { if (!confirm('Eliminare il codice?')) return; try { const { error } = await supabase.from('invite_codes').delete().eq('id', c.id); if (error) throw error; await fetchInviteCodes(); } catch (err) { console.error(err); showToast('Errore eliminando', 'error'); } }}
+                                                    className="px-2 py-1 rounded-md bg-red-600 text-white text-xs"
+                                                >
+                                                    Elimina
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {inviteCodes.length === 0 && (
+                                        <div className="text-xs text-slate-400">Nessun codice presente.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {profileModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                            <div className="px-6 py-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-white">Profilo</h3>
+                                <button onClick={() => setProfileModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                {profileLoading ? (
+                                    <div className="text-sm text-slate-400">Caricamento profilo...</div>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <div>
+                                                <label className="text-xs text-slate-400">Nome</label>
+                                                <input type="text" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400">Cognome</label>
+                                                <input type="text" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400">Data di nascita (facoltativo)</label>
+                                                <input type="date" value={profileBirthDate} onChange={(e) => setProfileBirthDate(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white" />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm">Tema</span>
+                                                <button onClick={onToggleTheme} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md text-sm`}>
+                                                    {theme === 'dark' ? 'Light' : 'Dark'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-2 mt-4">
+                                            <div className="text-xs text-slate-400">Codice invito: <span className="text-white font-mono">{profileInviteCode || '—'}</span></div>
+                                            <div className="text-xs text-slate-400">Registrato il: <span className="text-white">{profileRegisteredAt ? new Date(profileRegisteredAt).toLocaleString() : '—'}</span></div>
+                                        </div>
+                                        <div className="mt-4 border-t border-slate-800 pt-4">
+                                            <h4 className="font-semibold mb-2">Cambia Password</h4>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <input type="password" placeholder="Nuova password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white" />
+                                                <input type="password" placeholder="Conferma password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white" />
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            if (!newPassword || newPassword.length < 8) { showToast('Password troppo corta', 'error'); return; }
+                                                            if (newPassword !== confirmPassword) { showToast('Le password non coincidono', 'error'); return; }
+                                                            const { error } = await supabase.auth.updateUser({ password: newPassword });
+                                                            if (error) throw error;
+                                                            setNewPassword(''); setConfirmPassword('');
+                                                            showToast('Password aggiornata', 'success');
+                                                        } catch (err) { console.error(err); showToast('Errore aggiornando password', 'error'); }
+                                                    }}
+                                                    className="px-3 py-2 rounded-md bg-emerald-600 text-white text-sm"
+                                                >
+                                                    Aggiorna Password
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-between">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const { data: userData } = await supabase.auth.getUser();
+                                                        const user = userData?.user;
+                                                        if (!user) throw new Error('Utente non autenticato');
+                                                        const update: { first_name: string | null; last_name: string | null; birth_date: string | null } = {
+                                                            first_name: profileFirstName || null,
+                                                            last_name: profileLastName || null,
+                                                            birth_date: profileBirthDate ? profileBirthDate : null,
+                                                        };
+                                                        const { error } = await supabase.from('app_users').update(update).eq('id', user.id);
+                                                        if (error) throw error;
+                                                        showToast('Profilo aggiornato', 'success');
+                                                    } catch (err) { console.error(err); showToast('Errore aggiornando profilo', 'error'); }
+                                                }}
+                                                className="px-3 py-2 rounded-md bg-[#1E43B8] text-white text-sm"
+                                            >
+                                                Salva Profilo
+                                            </button>
+                                            <button onClick={handleLogout} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md text-sm flex items-center gap-2`}>
+                                                <LogOut className="w-4 h-4" />
+                                                Esci
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {usersModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                            <div className="px-6 py-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-white">Gestione Utenti e Ruoli</h3>
+                                <button onClick={() => setUsersModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+                                {appUsers.map(u => (
+                                    <div key={u.id} className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-mono">{u.email}</span>
+                                            {u.created_at && <span className="text-xs text-slate-400">{new Date(u.created_at).toLocaleDateString()}</span>}
+                                            <span className={`text-xs px-2 py-1 rounded ${u.active ? 'bg-green-700 text-white' : 'bg-slate-700 text-white'}`}>{u.active ? 'Attivo' : 'Inattivo'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={u.role}
+                                                onChange={async (e) => { try { const role = e.target.value as AppRole; const { error } = await supabase.from('app_users').update({ role }).eq('id', u.id); if (error) throw error; await fetchAppUsers(); showToast('Ruolo aggiornato', 'success'); } catch (err) { console.error(err); showToast('Errore aggiornando ruolo', 'error'); } }}
+                                                className="px-2 py-1 rounded-md bg-[#555D69] text-white text-xs"
+                                            >
+                                                <option value="user">User</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                            <button
+                                                onClick={async () => { try { const { error } = await supabase.from('app_users').update({ active: !u.active }).eq('id', u.id); if (error) throw error; await fetchAppUsers(); } catch (err) { console.error(err); showToast('Errore aggiornando', 'error'); } }}
+                                                className="px-2 py-1 rounded-md bg-[#555D69] text-white text-xs"
+                                            >
+                                                {u.active ? 'Disattiva' : 'Attiva'}
+                                            </button>
+                                            <button
+                                                onClick={async () => { if (!confirm('Eliminare utente?')) return; try { const { error } = await supabase.from('app_users').delete().eq('id', u.id); if (error) throw error; await fetchAppUsers(); } catch (err) { console.error(err); showToast('Errore eliminando', 'error'); } }}
+                                                className="px-2 py-1 rounded-md bg-red-600 text-white text-xs"
+                                            >
+                                                Elimina
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {appUsers.length === 0 && (
+                                    <div className="text-xs text-slate-400">Nessun utente presente o tabella non configurata.</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {settingsModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                            <div className="px-6 py-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-white">Impostazioni</h3>
+                                <button onClick={() => setSettingsModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm">Colonna Azioni</span>
+                                    <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={showActions} onChange={(e) => setShowActions(e.target.checked)} />
+                                        <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
+                                        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-slate-400">Di default è disabilitata.</p>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm">Button Esporta CSV</span>
+                                    <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={csvEnabled} onChange={(e) => setCsvEnabled(e.target.checked)} />
+                                        <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
+                                        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-slate-400">Di default è disabilitato.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
 
                 {/* Sidebar */}
@@ -1113,37 +1445,24 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                     <Home className="w-4 h-4" />
                                     Home
                                 </button>
-                                <button onClick={() => setActiveMenu('impostazioni')} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800 ${activeMenu === 'impostazioni' ? 'bg-slate-800' : ''}`}>
-                                    <Settings className="w-4 h-4" />
-                                    Impostazioni
-                                </button>
-                                <button onClick={() => setActiveMenu('profilo')} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800 ${activeMenu === 'profilo' ? 'bg-slate-800' : ''}`}>
+                        <button onClick={() => { setSettingsModalOpen(true); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800`}>
+                            <Settings className="w-4 h-4" />
+                            Impostazioni
+                        </button>
+                                <button onClick={async () => { await fetchProfile(); setProfileModalOpen(true); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800`}>
                                     <User className="w-4 h-4" />
                                     Profilo
                                 </button>
+                                <button onClick={async () => { await fetchInviteCodes(); setInviteModalOpen(true); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800`}>
+                                    <GitBranch className="w-4 h-4" />
+                                    Codici Invito
+                                </button>
+                                <button onClick={async () => { await fetchAppUsers(); setUsersModalOpen(true); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-800`}>
+                                    <Users className="w-4 h-4" />
+                                    Gestione Utenti
+                                </button>
                             </nav>
-                            {activeMenu === 'impostazioni' && (
-                                <div className="px-4 py-4 border-t border-slate-800">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm">Colonna Azioni</span>
-                                        <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={showActions} onChange={(e) => setShowActions(e.target.checked)} />
-                                            <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
-                                            <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
-                                        </label>
-                                    </div>
-                                    <p className="text-xs text-slate-400 mt-2">Di default è disabilitata.</p>
-                                    <div className="flex items-center justify-between mt-4">
-                                        <span className="text-sm">Button Esporta CSV</span>
-                                        <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={csvEnabled} onChange={(e) => setCsvEnabled(e.target.checked)} />
-                                            <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
-                                            <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
-                                        </label>
-                                    </div>
-                                    <p className="text-xs text-slate-400 mt-2">Di default è disabilitato.</p>
-                                </div>
-                            )}
+                            
                         </div>
                     </div>
                 )}
