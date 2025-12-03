@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogOut, Plus, Trash2, Save, X, Menu, Home, Settings, User, Users, Download, Upload, Sun, Moon, Search as SearchIcon, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
+import { LogOut, Plus, Trash2, Save, X, Menu, Home, Settings, User, Users, Download, Upload, Sun, Moon, Search as SearchIcon, ChevronRight, ChevronDown, GitBranch, Check, Minus, Shield, Wallet, Calculator } from 'lucide-react';
 import { Toast, type ToastType } from './Toast';
 
 interface Calculation {
@@ -722,16 +722,16 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
             <header className="bg-white dark:bg-[#2A3543] border-b border-slate-200 dark:border-[#2A3543] sticky top-0 z-10">
                 <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setSidebarOpen(true)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md flex items-center gap-2 text-sm font-medium`}>
+                        <button onClick={() => setSidebarOpen(true)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md flex items-center gap-1 sm:gap-2 text-sm font-medium`}>
                             <Menu className="w-5 h-5" />
-                            <span>Menu</span>
+                            <span className="hidden sm:inline">Menu</span>
                         </button>
                         <img src="/logo-vincitu.png" alt="Logo" className="h-12 w-auto object-contain" />
                         
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                         {(userFirstName || userLastName) && (
-                            <span className={`${theme === 'light' ? 'text-black' : 'text-white'} text-sm px-2`}>
+                            <span className={`hidden md:inline ${theme === 'light' ? 'text-black' : 'text-white'} text-sm px-2`}>
                                 Benvenuto {userFirstName} {userLastName}
                             </span>
                         )}
@@ -741,14 +741,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                             title="Tema"
                         >
                             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                            {theme === 'dark' ? 'Light' : 'Dark'}
+                            <span className="hidden sm:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
                         </button>
                         <button
                             onClick={handleLogout}
                             className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] flex items-center gap-2 text-sm font-medium transition-colors px-2 py-1 rounded-md`}
                         >
                             <LogOut className="w-4 h-4" />
-                            Esci
+                            <span className="hidden sm:inline">Esci</span>
                         </button>
                     </div>
                 </div>
@@ -756,24 +756,24 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
             <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
                 {/* Actions */}
-        <div className="mb-6 flex justify-between items-center">
-            <div className="relative w-full max-w-xs">
+            <div className="mb-6 flex justify-between items-center">
+            <div className="relative w-full max-w-[11rem] sm:max-w-xs">
                 <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cerca utente..."
-                    className={`w-full pl-9 pr-3 py-2 rounded-lg border focus:ring-2 focus:ring-slate-500 outline-none transition-all ${theme === 'light' ? 'bg-white text-black border-slate-300' : 'bg-[#4B5563] text-white border-[#1F293B]'}`}
+                    className={`w-full pl-8 sm:pl-9 pr-2 sm:pr-3 py-1.5 sm:py-2 rounded-lg border focus:ring-2 focus:ring-slate-500 outline-none transition-all text-sm sm:text-base ${theme === 'light' ? 'bg-white text-black border-slate-300' : 'bg-[#4B5563] text-white border-[#1F293B]'}`}
                 />
             </div>
             <div className="flex items-center gap-2">
                 <button
                     onClick={() => { setIsAdding(true); showToast('Modulo Nuova Voce aperto', 'success'); }}
-                    className="bg-[#1E43B8] hover:bg-[#1a3a9e] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
+                    className="bg-[#1E43B8] hover:bg-[#1a3a9e] text-white border-[0.5px] border-[#888F96] px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
-                    Nuova Voce
+                    <span className="hidden sm:inline">Nuova Voce</span>
                 </button>
                 
                 
@@ -930,22 +930,22 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                         a.click();
                         URL.revokeObjectURL(url);
                     }}
-                    className="bg-[#079765] hover:bg-[#067a51] text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
+                    className="bg-[#079765] hover:bg-[#067a51] text-white border-[0.5px] border-[#888F96] px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm"
                 >
                     <Download className="w-4 h-4" />
-                    Esporta EXCEL
+                    <span className="hidden sm:inline">Esporta EXCEL</span>
                 </button>
                 <button
                     onClick={handleExportCsv}
                     disabled={!csvEnabled}
-                    className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     <Download className="w-4 h-4" />
-                    Esporta CSV
+                    <span className="hidden sm:inline">Esporta CSV</span>
                 </button>
-                <label className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm cursor-pointer`}>
+                <label className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-sm cursor-pointer`}>
                     <Upload className="w-4 h-4" />
-                    Importa CSV
+                    <span className="hidden sm:inline">Importa CSV</span>
                     <input
                         type="file"
                                 accept=".csv"
@@ -1098,8 +1098,8 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                     </div>
             )}
 
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-                <div className={`${theme === 'light' ? 'bg-white/90 border-[#1E43B8]' : 'bg-[#1F293B]/90 border-white'} backdrop-blur-sm border px-3 py-2 rounded-2xl shadow-lg flex items-center gap-2 overflow-x-auto max-w-[90vw]`}>
+            <div className="fixed bottom-4 inset-x-4 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-40">
+                <div className={`${theme === 'light' ? 'bg-white/90 border-[#1E43B8]' : 'bg-[#1F293B]/90 border-white'} backdrop-blur-sm border px-3 py-2 rounded-2xl shadow-lg flex items-center justify-center gap-2 overflow-x-auto w-full max-w-full md:max-w-[90vw] flex-wrap`}>
                     <button
                         onClick={() => setHierarchyBarOpen(!hierarchyBarOpen)}
                         className={`${theme === 'light' ? 'bg-slate-200 text-black' : 'bg-[#4B5563] text-white'} border-[0.5px] border-[#888F96] p-1.5 rounded-md text-xs font-medium`}
@@ -1198,7 +1198,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                 {inviteModalOpen && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-[95vw] sm:max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
                             <div className="px-6 py-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-white">Gestione Codici Invito</h3>
                                 <button onClick={() => setInviteModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
@@ -1206,13 +1206,13 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                 </button>
                             </div>
                             <div className="p-6 space-y-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                     <input
                                         type="text"
                                         value={newInviteCode}
                                         onChange={(e) => setNewInviteCode(e.target.value)}
                                         placeholder="Nuovo codice"
-                                        className="flex-1 px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white"
+                                        className="w-full sm:flex-1 px-3 py-2 rounded-md bg-[#4B5563] border border-slate-700 text-white"
                                     />
                                     <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
                                         <input type="checkbox" className="sr-only peer" checked={newInviteActive} onChange={(e) => setNewInviteActive(e.target.checked)} />
@@ -1234,14 +1234,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                 </div>
                                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
                                     {inviteCodes.map(c => (
-                                        <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
-                                            <div className="flex items-center gap-3">
+                                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
+                                            <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="text-sm font-mono">{c.code}</span>
                                                 <span className={`text-xs px-2 py-1 rounded ${c.active ? 'bg-green-700 text-white' : 'bg-slate-700 text-white'}`}>{c.active ? 'Attivo' : 'Inattivo'}</span>
                                                 {c.used_at && <span className="text-xs text-slate-400">Usato: {new Date(c.used_at).toLocaleDateString()}</span>}
                                                 {c.used_by && <span className="text-xs text-slate-400">Da: {c.used_by}</span>}
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 mt-2 sm:mt-0">
                                                 <button
                                                     onClick={async () => { try { const { error } = await supabase.from('invite_codes').update({ active: !c.active }).eq('id', c.id); if (error) throw error; await fetchInviteCodes(); } catch (err) { console.error(err); showToast('Errore aggiornando', 'error'); } }}
                                                     className="px-2 py-1 rounded-md bg-[#555D69] text-white text-xs"
@@ -1363,7 +1363,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                 {usersModalOpen && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
+                        <div className="bg-[#1F293B] text-white rounded-xl shadow-2xl w-full max-w-[95vw] sm:max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-[#1F293B]">
                             <div className="px-6 py-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-white">Gestione Utenti e Ruoli</h3>
                                 <button onClick={() => setUsersModalOpen(false)} className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] px-2 py-1 rounded-md`}>
@@ -1372,13 +1372,13 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                             </div>
                             <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
                                 {appUsers.map(u => (
-                                    <div key={u.id} className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
-                                        <div className="flex items-center gap-3">
+                                    <div key={u.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 py-2 rounded-md bg-slate-900 border border-slate-800">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <span className="text-sm font-mono">{u.email}</span>
                                             {u.created_at && <span className="text-xs text-slate-400">{new Date(u.created_at).toLocaleDateString()}</span>}
                                             <span className={`text-xs px-2 py-1 rounded ${u.active ? 'bg-green-700 text-white' : 'bg-slate-700 text-white'}`}>{u.active ? 'Attivo' : 'Inattivo'}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
                                             <select
                                                 value={u.role}
                                                 onChange={async (e) => { try { const role = e.target.value as AppRole; const { error } = await supabase.from('app_users').update({ role }).eq('id', u.id); if (error) throw error; await fetchAppUsers(); showToast('Ruolo aggiornato', 'success'); } catch (err) { console.error(err); showToast('Errore aggiornando ruolo', 'error'); } }}
@@ -1484,19 +1484,42 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                 {/* Table */}
                 <div className="bg-[#1F293B] text-white rounded-xl shadow-sm border border-[#1F293B] overflow-hidden backdrop-blur-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="relative overflow-x-auto touch-pan-x w-full">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-6 sm:hidden z-10 bg-gradient-to-r from-[#1F293B] to-transparent"></div>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-6 sm:hidden z-10 bg-gradient-to-l from-[#1F293B] to-transparent"></div>
+                        <table className="w-full min-w-[900px] sm:min-w-[1024px] text-left border-collapse">
                             <thead>
                                 <tr className="bg-green-800 dark:bg-emerald-900 border-b border-green-900 dark:border-emerald-950">
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider">Livello</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider">Utente</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Negativo</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Cauzione</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Vers. Sett.</th>
-                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Disponibilità Conti Gioco</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right">Risultato</th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider whitespace-nowrap min-w-[96px]">
+                                        <GitBranch className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Livello</span>
+                                    </th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider whitespace-nowrap min-w-[160px]">
+                                        <User className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Utente</span>
+                                    </th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right whitespace-nowrap min-w-[120px]">
+                                        <Minus className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Negativo</span>
+                                    </th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right whitespace-nowrap min-w-[120px]">
+                                        <Shield className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Cauzione</span>
+                                    </th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right whitespace-nowrap min-w-[120px]">
+                                        <Upload className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Vers. Sett.</span>
+                                    </th>
+                                    <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right whitespace-nowrap min-w-[160px]">
+                                        <Wallet className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Disponibilità Conti Gioco</span>
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-right whitespace-nowrap min-w-[120px]">
+                                        <Calculator className="w-4 h-4 inline sm:hidden" />
+                                        <span className="hidden sm:inline">Risultato</span>
+                                    </th>
                                     {showActions && (
-                                        <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center">Azioni</th>
+                                        <th className="px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center whitespace-nowrap min-w-[96px]">Azioni</th>
                                     )}
                                 </tr>
                             </thead>
@@ -1531,7 +1554,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                             <td className="px-4 py-2">
                                                 <span className={`inline-block px-2 py-1 text-xs rounded ${levelBadgeClass(levels[row.id] ?? 'user')}`}>{(levels[row.id] ?? 'user').toUpperCase()}</span>
                                             </td>
-                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} uppercase`} title={owner ? `Appartiene a: ${(byId[owner.id]?.name ?? '').toUpperCase()} (${owner.level.toUpperCase()})` : undefined}>
+                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} uppercase whitespace-nowrap`} title={owner ? `Appartiene a: ${(byId[owner.id]?.name ?? '').toUpperCase()} (${owner.level.toUpperCase()})` : undefined}>
                                                 <div className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
                                                     {((childrenOf[row.id] || []).length > 0) ? (
                                                     <button
@@ -1550,11 +1573,11 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                     onSave={(val) => handleUpdate(row.id, 'name', val)}
                                                     validate={(val) => (!val || val.toString().trim() === '') ? 'Il nome non può essere vuoto' : null}
                                                     onError={(msg) => showToast(msg, 'error')}
-                                                    className={`w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm font-medium ${theme === 'light' ? 'text-black' : 'text-white'} uppercase outline-none transition-all`}
+                                                    className={`bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm font-medium ${theme === 'light' ? 'text-black' : 'text-white'} uppercase outline-none transition-all whitespace-nowrap`}
                                                 />
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-2 text-red-400">
+                                            <td className="px-4 py-2 text-red-400 whitespace-nowrap">
                                                 {hasChildren ? (
                                                     <span className="font-mono block text-right">{totals!.negativo.toFixed(2)}</span>
                                                 ) : (
@@ -1567,7 +1590,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                     />
                                                 )}
                                             </td>
-                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'}`}>
+                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                                                 <EditableCell
                                                     type="number"
                                                     value={row.cauzione}
@@ -1576,7 +1599,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                     className={`w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
                                                 />
                                             </td>
-                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'}`}>
+                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                                                 {hasChildren ? (
                                                     <span className="font-mono block text-right">{totals!.vers.toFixed(2)}</span>
                                                 ) : (
@@ -1593,12 +1616,13 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                             className={`${included ? 'bg-emerald-600 hover:bg-emerald-500' : (theme === 'light' ? 'bg-slate-300 hover:bg-slate-400 text-black' : 'bg-slate-700 hover:bg-slate-600 text-white)')} text-white px-2 py-1 rounded-md text-xs font-medium transition-colors`}
                                                             title={included ? 'Incluso nel calcolo' : 'Escluso dal calcolo'}
                                                         >
-                                                            {included ? 'Inclusa' : 'Esclusa'}
+                                                            <span className="hidden sm:inline">{included ? 'Inclusa' : 'Esclusa'}</span>
+                                                            {included ? <Check className="w-3 h-3 sm:hidden" /> : <X className="w-3 h-3 sm:hidden" />}
                                                         </button>
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'}`}>
+                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                                                 {hasChildren ? (
                                                     <span className="font-mono block text-right">{totals!.disp.toFixed(2)}</span>
                                                 ) : (
@@ -1611,18 +1635,18 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                     />
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-bold text-white text-right bg-red-600 font-mono">
+                                            <td className="px-6 py-4 text-sm font-bold text-white text-right bg-red-600 font-mono whitespace-nowrap">
                                                 {(hasChildren ? totals!.ris : valueOf(row.id).rr).toFixed(2)}
                                             </td>
                                             {showActions && (
-                                            <td className="px-6 py-4 text-center">
-                                                    <button
-                                                        onClick={() => handleDelete(row.id)}
-                                                        className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] transition-colors p-1 rounded-md`}
-                                                        title="Elimina"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                <button
+                                                    onClick={() => handleDelete(row.id)}
+                                                    className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] transition-colors p-1 rounded-md`}
+                                                    title="Elimina"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                                     <button
                                                         onClick={() => { setEditHierarchyId(row.id); setEditLevel(levels[row.id] ?? 'user'); setEditParentId(parents[row.id] ?? ''); }}
                                                         className={`${theme === 'light' ? 'bg-[#1F293B] hover:bg-[#1b2533]' : 'bg-[#555D69] hover:opacity-90'} text-white border-[0.5px] border-[#888F96] transition-colors p-1 rounded-md ml-2`}

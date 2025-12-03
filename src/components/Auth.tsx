@@ -90,7 +90,7 @@ export function Auth({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTogg
                     {/* Logo e Nome App */}
                     <div className="flex flex-col items-center mb-8">
                         <img src="/logo.png" alt="Logo" className="w-20 h-20 mb-4" />
-                        <h1 className={`text-3xl font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>PVR - Esiti Settimanali</h1>
+                        <h1 className={`text-3xl font-bold text-center ${theme === 'light' ? 'text-black' : 'text-white'}`}>PVR - Esiti Settimanali</h1>
                     </div>
 
                     <p className={`${theme === 'light' ? 'text-black' : 'text-slate-300'} text-center mb-8`}>
