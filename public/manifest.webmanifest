@@ -8,13 +8,13 @@
   "theme_color": "#1E43B8",
   "icons": [
     {
-      "src": "/logo-vincitu.png",
+      "src": "/logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo-vincitu.png",
+      "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
