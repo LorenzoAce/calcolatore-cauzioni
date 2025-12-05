@@ -93,7 +93,17 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     const [inviteCodes, setInviteCodes] = useState<Array<{ id: string; code: string; active?: boolean; used_at?: string | null; used_by?: string | null }>>([]);
     const [newInviteCode, setNewInviteCode] = useState('');
     const [newInviteActive, setNewInviteActive] = useState(true);
-    const [showActions] = useState(false);
+    const [showActions, setShowActions] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('showActions');
+                return raw ? raw === 'true' : false;
+            } catch {
+                return false;
+            }
+        }
+        return false;
+    });
     
     const [levels, setLevels] = useState<Record<string, Level>>(() => {
         if (typeof window !== 'undefined') {
@@ -350,6 +360,12 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
             localStorage.setItem('versInclude', JSON.stringify(versInclude));
         }
     }, [versInclude]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('showActions', String(showActions));
+        }
+    }, [showActions]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -1443,7 +1459,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                 </button>
                             </div>
                             <div className="p-6 space-y-4">
-                                <div className="text-sm text-slate-300">Nessuna impostazione disponibile.</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm">Colonna Azioni</span>
+                                    <label className="relative inline-flex items-center w-12 h-6 cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={showActions} onChange={(e) => setShowActions(e.target.checked)} />
+                                        <span className="block w-12 h-6 rounded-full bg-slate-700 transition-colors peer-checked:bg-green-500"></span>
+                                        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-6"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1494,7 +1517,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                 {/* Table */}
                 <div className="bg-[#1F293B] text-white rounded-xl shadow-sm border border-[#1F293B] overflow-hidden backdrop-blur-sm">
-                    <div className="relative overflow-x-auto touch-pan-x w-full">
+                    <div className="relative w-full overflow-x-auto overflow-y-auto max-h-[70vh] sm:max-h-none touch-auto">
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-6 sm:hidden z-10 bg-gradient-to-r from-[#1F293B] to-transparent"></div>
                         <div className="pointer-events-none absolute inset-y-0 right-0 w-6 sm:hidden z-10 bg-gradient-to-l from-[#1F293B] to-transparent"></div>
                         <table className="w-full min-w-[900px] sm:min-w-[1024px] text-left border-collapse">
