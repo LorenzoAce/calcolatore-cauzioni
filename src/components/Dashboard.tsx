@@ -448,17 +448,7 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
         const rr = calculateResult(n, c, v);
         return { n, c, v, d, rr };
     };
-    const sumTree = (id: string) => {
-        const base = valueOf(id);
-        // Return base values directly, no totalization from children
-        return { 
-            negativo: base.n, 
-            cauzione: base.c, 
-            vers: base.v, 
-            disp: base.d, 
-            ris: base.rr 
-        };
-    };
+
     const collect = (acc: Array<{ row: Calculation; depth: number }>, id: string, lvl: Level, depth: number) => {
         const kids = childrenOf[id] || [];
         const allowed = allowedChildLevels(lvl);
@@ -1572,8 +1562,6 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                     </tr>
                                 ) : (
                                     listToRender.map(({ row, depth }) => {
-                                        const hasChildren = (childrenOf[row.id] || []).length > 0;
-                                        const totals = hasChildren ? sumTree(row.id) : null;
                                         const rowLevel = (levels[row.id] ?? 'user') as Level;
                                         const owner = rowLevel === 'pvr' ? ancestorOfLevels(row.id, ['agente','master']) : null;
                                         const included = versInclude[row.id] !== false;
