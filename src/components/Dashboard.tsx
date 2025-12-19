@@ -1606,17 +1606,13 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2 text-red-400 whitespace-nowrap">
-                                                {hasChildren && !['master', 'agente', 'collaboratore'].includes((levels[row.id] ?? 'user')) ? (
-                                                    <span className="font-mono block text-right">{totals!.negativo.toFixed(2)}</span>
-                                                ) : (
-                                                    <EditableCell
-                                                        type="number"
-                                                        value={row.negativo}
-                                                        onSave={(val) => handleUpdate(row.id, 'negativo', val)}
-                                                        onError={(msg) => showToast(msg, 'error')}
-                                                        className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-red-400 text-right font-mono outline-none transition-all"
-                                                    />
-                                                )}
+                                                <EditableCell
+                                                    type="number"
+                                                    value={row.negativo}
+                                                    onSave={(val) => handleUpdate(row.id, 'negativo', val)}
+                                                    onError={(msg) => showToast(msg, 'error')}
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm text-red-400 text-right font-mono outline-none transition-all"
+                                                />
                                             </td>
                                             <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                                                 <EditableCell
@@ -1628,43 +1624,35 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                                                 />
                                             </td>
                                             <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
-                                                {hasChildren && !['master', 'agente', 'collaboratore'].includes((levels[row.id] ?? 'user')) ? (
-                                                    <span className="font-mono block text-right">{totals!.vers.toFixed(2)}</span>
-                                                ) : (
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <EditableCell
-                                                            type="number"
-                                                            value={row.versamenti_settimanali}
-                                                            onSave={(val) => handleUpdate(row.id, 'versamenti_settimanali', val)}
-                                                            onError={(msg) => showToast(msg, 'error')}
-                                                            className={`bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
-                                                        />
-                                                        <button
-                                                            onClick={() => setVersInclude(prev => ({ ...prev, [row.id]: !included }))}
-                                                            className={`${included ? 'bg-emerald-600 hover:bg-emerald-500' : (theme === 'light' ? 'bg-slate-300 hover:bg-slate-400 text-black' : 'bg-slate-700 hover:bg-slate-600 text-white)')} text-white px-2 py-1 rounded-md text-xs font-medium transition-colors`}
-                                                            title={included ? 'Incluso nel calcolo' : 'Escluso dal calcolo'}
-                                                        >
-                                                            <span className="hidden sm:inline">{included ? 'Inclusa' : 'Esclusa'}</span>
-                                                            {included ? <Check className="w-3 h-3 sm:hidden" /> : <X className="w-3 h-3 sm:hidden" />}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
-                                                {hasChildren && !['master', 'agente', 'collaboratore'].includes((levels[row.id] ?? 'user')) ? (
-                                                    <span className="font-mono block text-right">{totals!.disp.toFixed(2)}</span>
-                                                ) : (
+                                                <div className="flex items-center justify-end gap-2">
                                                     <EditableCell
                                                         type="number"
-                                                        value={row.disponibilita}
-                                                        onSave={(val) => handleUpdate(row.id, 'disponibilita', val)}
+                                                        value={row.versamenti_settimanali}
+                                                        onSave={(val) => handleUpdate(row.id, 'versamenti_settimanali', val)}
                                                         onError={(msg) => showToast(msg, 'error')}
-                                                        className={`w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
+                                                        className={`bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
                                                     />
-                                                )}
+                                                    <button
+                                                        onClick={() => setVersInclude(prev => ({ ...prev, [row.id]: !included }))}
+                                                        className={`${included ? 'bg-emerald-600 hover:bg-emerald-500' : (theme === 'light' ? 'bg-slate-300 hover:bg-slate-400 text-black' : 'bg-slate-700 hover:bg-slate-600 text-white)')} text-white px-2 py-1 rounded-md text-xs font-medium transition-colors`}
+                                                        title={included ? 'Incluso nel calcolo' : 'Escluso dal calcolo'}
+                                                    >
+                                                        <span className="hidden sm:inline">{included ? 'Inclusa' : 'Esclusa'}</span>
+                                                        {included ? <Check className="w-3 h-3 sm:hidden" /> : <X className="w-3 h-3 sm:hidden" />}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className={`px-4 py-2 ${theme === 'light' ? 'text-black' : 'text-white'} whitespace-nowrap`}>
+                                                <EditableCell
+                                                    type="number"
+                                                    value={row.disponibilita}
+                                                    onSave={(val) => handleUpdate(row.id, 'disponibilita', val)}
+                                                    onError={(msg) => showToast(msg, 'error')}
+                                                    className={`w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:ring-0 px-2 py-1 text-sm ${theme === 'light' ? 'text-black' : 'text-white'} text-right font-mono outline-none transition-all`}
+                                                />
                                             </td>
                                             <td className="px-6 py-4 text-sm font-bold text-white text-right bg-red-600 font-mono whitespace-nowrap">
-                                                {(hasChildren ? totals!.ris : valueOf(row.id).rr).toFixed(2)}
+                                                {valueOf(row.id).rr.toFixed(2)}
                                             </td>
                                             {showActions && (
                                             <td className="px-6 py-4 text-center whitespace-nowrap">
