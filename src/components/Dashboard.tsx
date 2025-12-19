@@ -450,28 +450,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
     };
     const sumTree = (id: string) => {
         const base = valueOf(id);
-        const lvl = levels[id] ?? 'user';
-        // 'master', 'agente', 'collaboratore' do NOT totalize negativo, versamenti, disponibilita from children
-        const skipTotal = ['master', 'agente', 'collaboratore'].includes(lvl);
-
-        let negativo = base.n;
-        let cauzione = base.c;
-        let vers = base.v;
-        let disp = base.d;
-        
-        const kids = childrenOf[id] || [];
-        kids.forEach(kid => {
-            const s = sumTree(kid);
-            if (!skipTotal) {
-                negativo += s.negativo;
-                vers += s.vers;
-                disp += s.disp;
-            }
-            cauzione += s.cauzione;
-        });
-        
-        const ris = calculateResult(negativo, cauzione, vers);
-        return { negativo, cauzione, vers, disp, ris };
+        // Return base values directly, no totalization from children
+        return { 
+            negativo: base.n, 
+            cauzione: base.c, 
+            vers: base.v, 
+            disp: base.d, 
+            ris: base.rr 
+        };
     };
     const collect = (acc: Array<{ row: Calculation; depth: number }>, id: string, lvl: Level, depth: number) => {
         const kids = childrenOf[id] || [];
@@ -796,27 +782,14 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
 
                         const sumTree = (id: string) => {
                             const base = valueOf(id);
-                            const lvl = levels[id] ?? 'user';
-                            const skipTotal = ['master', 'agente', 'collaboratore'].includes(lvl);
-
-                            let negativo = base.n;
-                            let cauzione = base.c;
-                            let vers = base.v;
-                            let disp = base.d;
-
-                            const kids = childrenOf[id] || [];
-                            kids.forEach(kid => {
-                                const s = sumTree(kid);
-                                if (!skipTotal) {
-                                    negativo += s.negativo;
-                                    vers += s.vers;
-                                    disp += s.disp;
-                                }
-                                cauzione += s.cauzione;
-                            });
-                            
-                            const ris = calculateResult(negativo, cauzione, vers);
-                            return { negativo, cauzione, vers, disp, ris };
+                            // Return base values directly, no totalization
+                            return { 
+                                negativo: base.n, 
+                                cauzione: base.c, 
+                                vers: base.v, 
+                                disp: base.d, 
+                                ris: base.rr 
+                            };
                         };
 
                         
@@ -830,18 +803,11 @@ export function Dashboard({ theme, onToggleTheme }: { theme: 'light' | 'dark'; o
                             const lvl = String((levels[id] ?? 'user')).toUpperCase();
                             const name = String(byId[id]?.name ?? '').toUpperCase();
                             const kids = childrenOf[id] || [];
-                            if (kids.length > 0) {
-                                const tot = sumTree(id);
-                                const base = valueOf(id);
-                                tableRows.push([lvl, name, tot.negativo, base.c, tot.vers, tot.disp, tot.ris]);
-                                rowDepths.push(depth);
-                                rowHasChildren.push(true);
-                            } else {
-                                const base = valueOf(id);
-                                tableRows.push([lvl, name, base.n, base.c, base.v, base.d, base.rr]);
-                                rowDepths.push(depth);
-                                rowHasChildren.push(false);
-                            }
+                            const base = valueOf(id);
+                            tableRows.push([lvl, name, base.n, base.c, base.v, base.d, base.rr]);
+                            rowDepths.push(depth);
+                            rowHasChildren.push(kids.length > 0);
+                            
                             kids.forEach(k => write(k, depth + 1));
                         };
 
